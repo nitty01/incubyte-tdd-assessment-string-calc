@@ -29,13 +29,16 @@ class StringCalculator:
             The sum of all numbers (ignoring numbers > 1000)
             
         Raises:
-            ValueError: If negative numbers are found
+            ValueError: If negative numbers are found or invalid format
         """
         if not numbers or not numbers.strip():
             return 0
         
         # Extract custom delimiters and numbers
         delimiters, numbers_part = self._extract_custom_delimiters(numbers)
+        
+        # Validate input format (no trailing delimiters)
+        self._validate_input_format(numbers_part, delimiters)
         
         # Parse numbers using the delimiters
         number_list = self._parse_numbers(numbers_part, delimiters)
@@ -52,10 +55,10 @@ class StringCalculator:
         Extract custom delimiters from the input string.
         
         Args:
-            numbers: Input string that may contain custom delimiters
+            numbers: Input string that may contain custom delimiter specification
             
         Returns:
-            Tuple of (delimiters_list, numbers_part)
+            Tuple of (delimiters_list, numbers_string)
         """
         # Default delimiters
         delimiters = [',', '\n']
@@ -65,33 +68,33 @@ class StringCalculator:
             # Find the end of delimiter specification
             newline_pos = numbers.find('\n')
             if newline_pos == -1:
-                # No newline found, treat entire string as numbers
-                return delimiters, numbers
+                raise ValueError("Invalid custom delimiter format")
             
+            # Extract delimiter specification
             delimiter_spec = numbers[2:newline_pos]
             numbers_part = numbers[newline_pos + 1:]
             
             # Parse custom delimiters
             custom_delimiters = self._parse_custom_delimiters(delimiter_spec)
-            delimiters.extend(custom_delimiters)
-            
-            return delimiters, numbers_part
+            delimiters = custom_delimiters
+        else:
+            numbers_part = numbers
         
-        return delimiters, numbers
+        return delimiters, numbers_part
     
     def _parse_custom_delimiters(self, delimiter_spec: str) -> List[str]:
         """
-        Parse custom delimiters from delimiter specification.
+        Parse custom delimiter specification.
         
         Args:
-            delimiter_spec: String containing delimiter specifications
+            delimiter_spec: String containing delimiter specification
             
         Returns:
-            List of custom delimiters
+            List of delimiter strings
         """
         delimiters = []
         
-        # Handle multiple delimiters in format [delim1][delim2]...
+        # Handle multiple delimiters in brackets [delim1][delim2]
         pattern = r'\[([^\]]+)\]'
         matches = re.findall(pattern, delimiter_spec)
         
@@ -104,6 +107,34 @@ class StringCalculator:
         
         return delimiters
     
+    def _validate_input_format(self, numbers: str, delimiters: List[str]) -> None:
+        """
+        Validate that the input format is correct (no trailing delimiters).
+        
+        Args:
+            numbers: String containing numbers
+            delimiters: List of delimiter strings
+            
+        Raises:
+            ValueError: If input format is invalid
+        """
+        if not numbers or not numbers.strip():
+            return
+        
+        # Check for trailing delimiters - only validate if there are actual numbers
+        # This allows cases like "1,2\n" (newline at end) but catches "1,\n" (comma followed by newline)
+        if numbers.strip():
+            # Check for specific invalid patterns like "1,\n" (comma followed by newline)
+            for delimiter in delimiters:
+                if delimiter == ',':
+                    # Check for comma followed by newline pattern
+                    if re.search(r',\s*\n\s*$', numbers):
+                        raise ValueError("Invalid input: trailing delimiter ',' not allowed")
+                elif delimiter == '\n':
+                    # Allow newline at end, but check for comma before newline
+                    if re.search(r',\s*\n\s*$', numbers):
+                        raise ValueError("Invalid input: trailing delimiter ',' not allowed")
+    
     def _parse_numbers(self, numbers: str, delimiters: List[str]) -> List[int]:
         """
         Parse numbers from string using specified delimiters.
@@ -114,6 +145,9 @@ class StringCalculator:
             
         Returns:
             List of parsed integers
+            
+        Raises:
+            ValueError: If any non-integer numbers are found
         """
         if not numbers or not numbers.strip():
             return []
@@ -126,15 +160,24 @@ class StringCalculator:
         # Split by delimiters and convert to integers
         number_strings = re.split(pattern, numbers)
         
-        # Filter out empty strings and convert to integers
+        # Filter out empty strings and validate each number
         number_list = []
         for num_str in number_strings:
             if num_str.strip():  # Skip empty strings
+                stripped_num = num_str.strip()
+                
+                # Check if the number contains decimal point
+                if '.' in stripped_num:
+                    raise ValueError(f"Invalid input: decimal numbers not allowed: {stripped_num}")
+                
+                # Check if the number contains any non-digit characters (except minus sign at start)
+                if not re.match(r'^-?\d+$', stripped_num):
+                    raise ValueError(f"Invalid input: non-integer number not allowed: {stripped_num}")
+                
                 try:
-                    number_list.append(int(num_str.strip()))
-                except ValueError:
-                    # Skip invalid numbers
-                    continue
+                    number_list.append(int(stripped_num))
+                except ValueError as e:
+                    raise ValueError(f"Invalid input: cannot convert to integer: {stripped_num}")
         
         return number_list
     
@@ -153,3 +196,8 @@ class StringCalculator:
         if negative_numbers:
             error_message = f"negative numbers not allowed: {' '.join(map(str, negative_numbers))}"
             raise ValueError(error_message)
+
+
+if __name__ == '__main__':
+    str_calc = StringCalculator()
+    print(str_calc.add("1\n2,3,10"))
