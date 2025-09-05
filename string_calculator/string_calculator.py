@@ -60,8 +60,8 @@ class StringCalculator:
         Returns:
             Tuple of (delimiters_list, numbers_string)
         """
-        # Default delimiters
-        delimiters = [',', '\n']
+        # Default delimiters include comma, newline, and tab
+        delimiters = [',', '\n', '\t']
         
         # Check if custom delimiters are specified
         if numbers.startswith('//'):
