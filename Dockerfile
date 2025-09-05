@@ -1,5 +1,5 @@
-# Production-ready Docker setup
-FROM python:3.11-slim
+# Production-ready Docker setup for String Calculator
+FROM python:3.12-slim
 
 # Set working directory
 WORKDIR /app
@@ -16,10 +16,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY string_calculator/ ./string_calculator/
 COPY ui/ ./ui/
-COPY run.sh ./
-
-# Make run script executable
-RUN chmod +x run.sh
 
 # Create non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser
@@ -31,7 +27,7 @@ EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5000/api/health || exit 1
+    CMD curl -f http://localhost:5000/ || exit 1
 
-# Default command
-CMD ["python", "ui/enhanced_app.py"]
+# Default command - run the Flask app
+CMD ["python", "ui/app.py"]
